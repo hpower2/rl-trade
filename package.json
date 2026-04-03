@@ -1,0 +1,13 @@
+{
+  "name": "rl-trade",
+  "private": true,
+  "packageManager": "npm@10.9.7",
+  "workspaces": [
+    "apps/frontend"
+  ],
+  "scripts": {
+    "frontend:build": "npm run build --workspace @rl-trade/frontend",
+    "frontend:dev": "npm run dev --workspace @rl-trade/frontend",
+    "frontend:preview": "npm run preview --workspace @rl-trade/frontend"
+  }
+}
