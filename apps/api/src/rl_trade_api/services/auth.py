@@ -47,6 +47,26 @@ def resolve_principal(
     )
 
 
+def resolve_token_principal(*, settings: Settings, token: str | None) -> AuthPrincipal | None:
+    if settings.api_auth_mode == "disabled":
+        return AuthPrincipal(
+            subject=settings.api_auth_subject,
+            roles=("operator",),
+            auth_mode="disabled",
+        )
+
+    expected_token = settings.api_auth_token.get_secret_value() if settings.api_auth_token else ""
+    presented_token = (token or "").strip()
+    if not presented_token or not compare_digest(presented_token, expected_token):
+        return None
+
+    return AuthPrincipal(
+        subject=settings.api_auth_subject,
+        roles=("operator",),
+        auth_mode="static_token",
+    )
+
+
 def authentication_required_error() -> HTTPException:
     return HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,

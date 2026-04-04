@@ -6,7 +6,14 @@ import logging
 
 from rl_trade_data import Base, IngestionJob, JobStatus, Symbol, build_engine, build_session_factory, session_scope
 from rl_trade_worker.celery_app import celery_app
-from rl_trade_worker.queues import ALL_QUEUE_NAMES, INGESTION_QUEUE, MAINTENANCE_QUEUE, PREPROCESSING_QUEUE
+from rl_trade_worker.queues import (
+    ALL_QUEUE_NAMES,
+    INGESTION_QUEUE,
+    MAINTENANCE_QUEUE,
+    PREPROCESSING_QUEUE,
+    RL_TRAINING_QUEUE,
+    SUPERVISED_TRAINING_QUEUE,
+)
 from rl_trade_worker.tasks import run_ingestion_probe
 
 
@@ -17,6 +24,8 @@ def test_celery_queue_configuration_exposes_named_queues() -> None:
     assert celery_app.conf.task_default_queue == MAINTENANCE_QUEUE
     assert celery_app.conf.task_routes["jobs.run_ingestion_probe"]["queue"] == INGESTION_QUEUE
     assert celery_app.conf.task_routes["jobs.run_preprocessing_job"]["queue"] == PREPROCESSING_QUEUE
+    assert celery_app.conf.task_routes["jobs.run_supervised_training_job"]["queue"] == SUPERVISED_TRAINING_QUEUE
+    assert celery_app.conf.task_routes["jobs.run_rl_training_job"]["queue"] == RL_TRAINING_QUEUE
 
 
 def test_tracked_task_success_and_retry_paths_update_job_state(tmp_path, monkeypatch, caplog) -> None:

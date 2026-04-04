@@ -10,9 +10,9 @@ from sqlalchemy.orm import Session
 
 from rl_trade_api.schemas.ingestion import IngestionJobResponse, IngestionRequest
 from rl_trade_api.services.auth import AuthPrincipal
+from rl_trade_api.services.events import EventBroadcaster
 from rl_trade_data import IngestionJob, JobKind, JobStatus, Symbol, mark_job_failed, mark_job_requeued
 from rl_trade_data.models.enums import Timeframe
-from rl_trade_worker.tasks import run_ingestion_job
 
 
 def request_ingestion(
@@ -20,6 +20,7 @@ def request_ingestion(
     session: Session,
     principal: AuthPrincipal,
     payload: IngestionRequest,
+    event_broadcaster: EventBroadcaster | None = None,
 ) -> IngestionJobResponse:
     normalized_symbol_code = payload.symbol_code.strip().upper()
     symbol = session.scalar(select(Symbol).where(Symbol.code == normalized_symbol_code))
@@ -45,6 +46,12 @@ def request_ingestion(
         job=job,
         failure_detail="Unable to enqueue ingestion job.",
     )
+    _publish_ingestion_event(
+        event_broadcaster=event_broadcaster,
+        job=job,
+        symbol=symbol,
+        source="api_request",
+    )
 
     return build_ingestion_job_response(job=job, symbol=symbol)
 
@@ -54,6 +61,7 @@ def retry_ingestion(
     session: Session,
     principal: AuthPrincipal,
     job_id: int,
+    event_broadcaster: EventBroadcaster | None = None,
 ) -> IngestionJobResponse:
     job = session.get(IngestionJob, job_id)
     if job is None:
@@ -92,6 +100,12 @@ def retry_ingestion(
         )
     finally:
         session.refresh(job)
+    _publish_ingestion_event(
+        event_broadcaster=event_broadcaster,
+        job=job,
+        symbol=symbol,
+        source="manual_retry",
+    )
 
     return build_ingestion_job_response(job=job, symbol=symbol)
 
@@ -131,7 +145,7 @@ def enqueue_ingestion_job(
     on_failure: Callable[[Exception], None] | None = None,
 ) -> None:
     try:
-        run_ingestion_job.delay(job_id=job.id)
+        _enqueue_ingestion_job(job_id=job.id)
     except Exception as exc:
         mark_job_failed(
             session,
@@ -146,6 +160,40 @@ def enqueue_ingestion_job(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=failure_detail,
         ) from exc
+
+
+def _enqueue_ingestion_job(*, job_id: int) -> None:
+    from rl_trade_worker.tasks import run_ingestion_job
+
+    run_ingestion_job.delay(job_id=job_id)
+
+
+def _publish_ingestion_event(
+    *,
+    event_broadcaster: EventBroadcaster | None,
+    job: IngestionJob,
+    symbol: Symbol,
+    source: str,
+) -> None:
+    if event_broadcaster is None:
+        return
+    event_broadcaster.publish_event(
+        event_type="ingestion_progress",
+        entity_type="ingestion_job",
+        entity_id=str(job.id),
+        occurred_at=job.updated_at,
+        payload={
+            "job_id": job.id,
+            "symbol_id": symbol.id,
+            "symbol_code": symbol.code,
+            "status": job.status.value,
+            "progress_percent": job.progress_percent,
+            "sync_mode": job.sync_mode,
+            "requested_timeframes": list(job.requested_timeframes),
+            "source_provider": job.source_provider,
+            "source": source,
+        },
+    )
 
 
 def build_ingestion_job_response(*, job: IngestionJob, symbol: Symbol) -> IngestionJobResponse:

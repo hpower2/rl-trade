@@ -8,9 +8,9 @@ from sqlalchemy.orm import Session
 
 from rl_trade_api.schemas.preprocessing import PreprocessingJobResponse, PreprocessingRequest
 from rl_trade_api.services.auth import AuthPrincipal
+from rl_trade_api.services.events import EventBroadcaster
 from rl_trade_data import JobKind, JobStatus, PreprocessingJob, Symbol, mark_job_failed
 from rl_trade_data.models import Timeframe
-from rl_trade_worker.tasks import run_preprocessing_job
 
 
 def request_preprocessing(
@@ -18,6 +18,7 @@ def request_preprocessing(
     session: Session,
     principal: AuthPrincipal,
     payload: PreprocessingRequest,
+    event_broadcaster: EventBroadcaster | None = None,
 ) -> PreprocessingJobResponse:
     normalized_symbol_code = payload.symbol_code.strip().upper()
     symbol = session.scalar(select(Symbol).where(Symbol.code == normalized_symbol_code))
@@ -52,7 +53,7 @@ def request_preprocessing(
     session.refresh(job)
 
     try:
-        run_preprocessing_job.delay(job_id=job.id)
+        _enqueue_preprocessing_job(job_id=job.id)
     except Exception as exc:
         mark_job_failed(
             session,
@@ -65,6 +66,12 @@ def request_preprocessing(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Unable to enqueue preprocessing job.",
         ) from exc
+    _publish_preprocessing_event(
+        event_broadcaster=event_broadcaster,
+        job=job,
+        symbol=symbol,
+        source="api_request",
+    )
 
     return build_preprocessing_job_response(job=job, symbol=symbol)
 
@@ -82,4 +89,40 @@ def build_preprocessing_job_response(*, job: PreprocessingJob, symbol: Symbol) -
         feature_set_version=str(details.get("feature_set_version", "v1")),
         progress_percent=job.progress_percent,
         dataset_version_id=job.dataset_version_id,
+    )
+
+
+def _enqueue_preprocessing_job(*, job_id: int) -> None:
+    from rl_trade_worker.tasks import run_preprocessing_job
+
+    run_preprocessing_job.delay(job_id=job_id)
+
+
+def _publish_preprocessing_event(
+    *,
+    event_broadcaster: EventBroadcaster | None,
+    job: PreprocessingJob,
+    symbol: Symbol,
+    source: str,
+) -> None:
+    if event_broadcaster is None:
+        return
+    details = dict(job.details or {})
+    event_broadcaster.publish_event(
+        event_type="preprocessing_progress",
+        entity_type="preprocessing_job",
+        entity_id=str(job.id),
+        occurred_at=job.updated_at,
+        payload={
+            "job_id": job.id,
+            "symbol_id": symbol.id,
+            "symbol_code": symbol.code,
+            "status": job.status.value,
+            "progress_percent": job.progress_percent,
+            "requested_timeframes": list(job.requested_timeframes),
+            "primary_timeframe": details.get("primary_timeframe"),
+            "feature_set_name": details.get("feature_set_name"),
+            "feature_set_version": details.get("feature_set_version"),
+            "source": source,
+        },
     )

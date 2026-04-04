@@ -50,8 +50,8 @@ def update_job_progress(
 ) -> TrackedJob:
     job = require_job(session, job_kind=job_kind, job_id=job_id)
     job.progress_percent = max(0, min(progress_percent, 100))
-    if details_update:
-        job.details = _merge_details(job.details, details_update)
+    if details_update and hasattr(job, "details"):
+        setattr(job, "details", _merge_details(getattr(job, "details", None), details_update))
     session.flush()
     return job
 
@@ -69,8 +69,8 @@ def mark_job_running(
     job.started_at = job.started_at or started_at or utcnow()
     job.finished_at = None
     job.error_message = None
-    if details_update:
-        job.details = _merge_details(job.details, details_update)
+    if details_update and hasattr(job, "details"):
+        setattr(job, "details", _merge_details(getattr(job, "details", None), details_update))
     session.flush()
     return job
 
@@ -86,13 +86,18 @@ def mark_job_retry(
     job = require_job(session, job_kind=job_kind, job_id=job_id)
     job.status = JobStatus.PENDING
     job.error_message = None
-    job.details = _merge_details(
-        job.details,
-        {
-            "retry_count": retry_count,
-            "last_retry_reason": reason,
-        },
-    )
+    if hasattr(job, "details"):
+        setattr(
+            job,
+            "details",
+            _merge_details(
+                getattr(job, "details", None),
+                {
+                    "retry_count": retry_count,
+                    "last_retry_reason": reason,
+                },
+            ),
+        )
     session.flush()
     return job
 
@@ -118,15 +123,15 @@ def mark_job_requeued(
     if hasattr(job, "last_successful_candle_time"):
         job.last_successful_candle_time = None
 
-    manual_retry_count = int((job.details or {}).get("manual_retry_count", 0)) + 1
-    details_update = {
-        "manual_retry_count": manual_retry_count,
-        "last_manual_retry_at": utcnow().isoformat(),
-    }
-    if requested_by:
-        details_update["last_manual_retry_by"] = requested_by
-
-    job.details = _merge_details(job.details, details_update)
+    if hasattr(job, "details"):
+        manual_retry_count = int((getattr(job, "details", None) or {}).get("manual_retry_count", 0)) + 1
+        details_update = {
+            "manual_retry_count": manual_retry_count,
+            "last_manual_retry_at": utcnow().isoformat(),
+        }
+        if requested_by:
+            details_update["last_manual_retry_by"] = requested_by
+        setattr(job, "details", _merge_details(getattr(job, "details", None), details_update))
     session.flush()
     return job
 
@@ -144,8 +149,8 @@ def mark_job_succeeded(
     job.progress_percent = 100
     job.finished_at = finished_at or utcnow()
     job.error_message = None
-    if details_update:
-        job.details = _merge_details(job.details, details_update)
+    if details_update and hasattr(job, "details"):
+        setattr(job, "details", _merge_details(getattr(job, "details", None), details_update))
     session.flush()
     return job
 

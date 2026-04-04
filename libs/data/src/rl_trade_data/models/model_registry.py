@@ -249,7 +249,13 @@ class ApprovedModel(IntegerPrimaryKeyMixin, CreatedAtMixin, SymbolForeignKeyMixi
         index=True,
     )
     model_type: Mapped[ModelType] = mapped_column(
-        sa.Enum(ModelType, name="model_type_enum", native_enum=False, validate_strings=True),
+        sa.Enum(
+            ModelType,
+            name="model_type_enum",
+            native_enum=False,
+            validate_strings=True,
+            values_callable=lambda enum: [item.value for item in enum],
+        ),
         nullable=False,
     )
     approved_by: Mapped[str | None] = mapped_column(sa.String(64), nullable=True)

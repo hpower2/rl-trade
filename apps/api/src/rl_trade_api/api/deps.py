@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from functools import lru_cache
 
-from fastapi import Depends, Security
+from fastapi import Depends, Request, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from redis import Redis
 from sqlalchemy import Engine
@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from rl_trade_common import Settings, get_settings
 from rl_trade_api.services import auth as auth_service
 from rl_trade_api.services.auth import AuthPrincipal
+from rl_trade_api.services.events import EventBroadcaster
 from rl_trade_data import get_engine, get_session_factory
 from rl_trade_trading import MT5Gateway
 
@@ -48,6 +49,10 @@ def get_redis_client() -> Redis:
 @lru_cache(maxsize=1)
 def get_mt5_gateway() -> MT5Gateway:
     return MT5Gateway()
+
+
+def get_event_broadcaster(request: Request) -> EventBroadcaster:
+    return request.app.state.event_broadcaster
 
 
 def get_optional_principal(

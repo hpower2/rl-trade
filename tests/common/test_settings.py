@@ -15,6 +15,9 @@ def test_settings_defaults_remain_safe() -> None:
     assert settings.allow_live_trading is False
     assert settings.model_approval_min_confidence == 70.0
     assert settings.model_approval_min_risk_reward == 2.0
+    assert settings.model_approval_min_sample_size == 100
+    assert settings.model_approval_max_drawdown == 20.0
+    assert settings.artifacts_root_dir == ".artifacts"
 
 
 def test_celery_urls_fall_back_to_redis() -> None:

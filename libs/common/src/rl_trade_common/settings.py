@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     worker_prefetch_multiplier: int = Field(default=1, ge=1)
     scheduler_heartbeat_interval_seconds: int = Field(default=60, ge=1)
     scheduler_max_interval_seconds: int = Field(default=10, ge=1)
+    artifacts_root_dir: str = ".artifacts"
 
     mt5_terminal_path: str = "/opt/metatrader5/terminal64.exe"
     mt5_login: str | None = None
@@ -47,6 +48,8 @@ class Settings(BaseSettings):
     allow_live_trading: bool = False
     model_approval_min_confidence: float = Field(default=70.0, ge=0.0, le=100.0)
     model_approval_min_risk_reward: float = Field(default=2.0, ge=0.0)
+    model_approval_min_sample_size: int = Field(default=100, ge=1)
+    model_approval_max_drawdown: float = Field(default=20.0, ge=0.0)
 
     @property
     def effective_celery_broker_url(self) -> str:

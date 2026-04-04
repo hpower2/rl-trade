@@ -12,10 +12,14 @@ dependencies = [
   "alembic>=1.14,<2.0",
   "celery>=5.4,<6.0",
   "fastapi>=0.115,<1.0",
+  "gymnasium>=1.2,<2.0",
+  "numpy>=2.4,<3.0",
   "pydantic-settings>=2.6,<3.0",
   "psycopg[binary]>=3.2,<4.0",
   "redis>=5.2,<6.0",
   "sqlalchemy>=2.0,<3.0",
+  "stable-baselines3>=2.8,<3.0",
+  "torch>=2.11,<3.0",
   "uvicorn>=0.32,<1.0"
 ]
 
@@ -28,6 +32,7 @@ dev = [
 
 [project.scripts]
 rl-trade-api = "rl_trade_api.main:run"
+rl-trade-paper-dry-run = "rl_trade_api.tools.paper_trading_dry_run:run_cli"
 rl-trade-worker = "rl_trade_worker.main:run"
 rl-trade-scheduler = "rl_trade_worker.scheduler:run"
 

@@ -17,6 +17,17 @@ def get_job_status(*, session: Session, job_type: JobKind, job_id: int) -> JobSt
             detail=f"{job_type.value} job {job_id} was not found.",
         )
 
+    details = dict(getattr(job, "details", None) or {})
+    metrics = getattr(job, "metrics", None)
+    if metrics:
+        details["metrics"] = metrics
+    algorithm = getattr(job, "algorithm", None)
+    if algorithm:
+        details.setdefault("algorithm", algorithm)
+    dataset_version_id = getattr(job, "dataset_version_id", None)
+    if dataset_version_id is not None:
+        details.setdefault("dataset_version_id", dataset_version_id)
+
     return JobStatusResponse(
         job_type=job_type,
         job_id=job.id,
@@ -29,5 +40,5 @@ def get_job_status(*, session: Session, job_type: JobKind, job_id: int) -> JobSt
         progress_percent=job.progress_percent,
         symbol_id=getattr(job, "symbol_id", None),
         error_message=job.error_message,
-        details=job.details or {},
+        details=details,
     )

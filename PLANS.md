@@ -23,10 +23,10 @@ Build a production-style MVP for a Forex Trainer & Paper Trading Dashboard that 
 - [x] Milestone 5: Symbol validation and MT5 connectivity foundation
 - [x] Milestone 6: OHLC ingestion pipeline for 1m / 5m / 15m
 - [x] Milestone 7: Feature engineering and dataset versioning
-- [ ] Milestone 8: Supervised training pipeline
-- [ ] Milestone 9: RL environment and RL training pipeline
-- [ ] Milestone 10: Evaluation, approval gating, and model registry
-- [ ] Milestone 11: Paper trading engine and backend enforcement
+- [x] Milestone 8: Supervised training pipeline
+- [x] Milestone 9: RL environment and RL training pipeline
+- [x] Milestone 10: Evaluation, approval gating, and model registry
+- [x] Milestone 11: Paper trading engine and backend enforcement
 - [ ] Milestone 12: WebSocket events and realtime progress updates
 - [ ] Milestone 13: Frontend dashboard pages and workflows
 - [ ] Milestone 14: Docker Compose, GPU wiring, and runtime validation
@@ -364,6 +364,18 @@ Build a production-style MVP for a Forex Trainer & Paper Trading Dashboard that 
 - Metrics persisted to DB
 - Failing training job is captured and recoverable
 
+**Progress notes**
+- 2026-04-03: Added a supervised-training intake path at `/api/v1/training/supervised/request` that accepts a ready `dataset_version`, creates linked `training_requests` plus `supervised_training_jobs` rows, and enqueues the supervised-training worker instead of running training in the API process.
+- 2026-04-03: Added supervised-training worker routing plus a first real baseline-training executor that rebuilds the deterministic dataset from candles, performs time-based split and walk-forward comparison across baseline classifiers, saves feature schema/scaler/model/metrics artifacts, and persists `supervised_models`, `model_artifacts`, and job metrics with recorded CPU device usage.
+- 2026-04-03: Validated the supervised-training foundation slice with focused API request tests, worker success/failure tests, job-polling metric visibility coverage, backend import validation, and the full backend regression suite. Milestone 8 remains in progress because PyTorch-based model training, richer model outputs, and broader training-job API surfaces are still outstanding.
+- 2026-04-03: Added reloadable supervised artifact helpers in `libs/ml` plus a dedicated `/api/v1/training/supervised/{job_id}` status endpoint that exposes linked model metadata, artifact inventory, and persisted training metrics for supervised jobs.
+- 2026-04-03: Validated supervised artifact reload and dedicated training-status coverage with focused ML/API tests, backend import validation, and the full backend regression suite. Milestone 8 remains in progress because the actual PyTorch training path is still not implemented in the current environment.
+- 2026-04-03: Added a supervised training retry endpoint at `/api/v1/training/supervised/{job_id}/retry` that only requeues failed jobs, resets stale supervised job state, synchronizes the linked training request back to `pending`, and removes any partial supervised model/artifact rows before re-enqueueing.
+- 2026-04-03: Hardened shared job-state helpers so tracked jobs without a `details` column, including supervised training jobs, can still use the generic progress/requeue lifecycle safely.
+- 2026-04-03: Validated supervised retry/recoverability with focused API tests for successful requeue and conflict rejection, backend import validation, and the full backend regression suite. Milestone 8 remains in progress because the actual PyTorch training path is still not implemented in the current environment.
+- 2026-04-03: Added the real PyTorch supervised training path with a small MLP classifier, deterministic CPU-safe device selection, persisted torch checkpoint artifacts, configurable supervised hyperparameters, and training smoke coverage on a sample dataset while preserving the existing baseline comparison path.
+- 2026-04-03: Milestone 8 is complete. Validation passed for dataset-version-triggered supervised training requests, PyTorch smoke training, time-based split plus walk-forward validation, artifact persistence and reload, metrics visibility through job and training-status APIs, failed-job retry/recovery, backend import validation, and the full backend regression suite.
+
 ---
 
 ### Milestone 9: RL environment and RL training pipeline
@@ -394,6 +406,14 @@ Build a production-style MVP for a Forex Trainer & Paper Trading Dashboard that 
 - Artifact persistence works
 - RL training job status transitions correctly
 
+**Progress notes**
+- 2026-04-03: Added a custom `ForexTradingEnv` Gymnasium environment in `libs/ml` built around the existing deterministic dataset contract, with windowed feature observations, position state, UTC-safe step progression, and reward components for spread/slippage approximation, overtrading, drawdown, and risk-to-reward bonus handling.
+- 2026-04-03: Validated the RL environment slice with focused reset/step tests covering profitable long steps, reversal penalties, drawdown penalties, and required feature validation, plus backend import validation and the full backend regression suite. PPO training, RL artifact persistence, and RL job orchestration remain outstanding, so Milestone 9 stays in progress.
+- 2026-04-03: Added Stable-Baselines3 PPO helpers in `libs/ml` that train against the custom trading environment, evaluate a deterministic episode, and persist reloadable RL artifacts as JSON metadata plus a saved PPO checkpoint.
+- 2026-04-03: Validated the PPO slice with a small-sample smoke training run, RL artifact save/load coverage, backend import validation, and the full backend regression suite. RL job orchestration and DB-backed RL status transitions are still outstanding, so Milestone 9 remains in progress.
+- 2026-04-03: Added the worker-side RL training execution path with Celery routing on the `rl_training` queue, DB-backed `rl_training_jobs` lifecycle updates, persisted `rl_models` plus `model_artifacts`, and generic job-status visibility for RL metrics through the existing jobs endpoint.
+- 2026-04-03: Milestone 9 is complete. Validation passed for environment reset/step behavior, PPO smoke training, RL artifact save/load, RL worker success/failure transitions, generic RL job polling, backend import validation, and the full backend regression suite.
+
 ---
 
 ### Milestone 10: Evaluation, approval gating, and model registry
@@ -420,6 +440,15 @@ Build a production-style MVP for a Forex Trainer & Paper Trading Dashboard that 
 - Evaluation report persistence test
 - Rejection path test for low confidence / low RR / high drawdown
 - Approved symbol query test
+
+**Progress notes**
+- 2026-04-03: Added a shared backend approval gate in `libs/trading` that evaluates confidence, risk-to-reward, sample size, drawdown, and critical-data checks, plus a reusable `is_symbol_tradeable` helper for later trading enforcement.
+- 2026-04-03: Added API-side evaluation persistence and approval handling with `/api/v1/evaluations` and `/api/v1/evaluations/approved-symbols`, including `model_evaluations` writes, `approved_models` activation/revocation, model status updates, and audit-log entries for approval decisions.
+- 2026-04-03: Validated the evaluation slice with direct approval-gate unit tests, evaluation persistence coverage, rejection-path coverage for low confidence / low RR / high drawdown / critical data issues, approved-symbol query coverage, backend import validation, and the full backend regression suite. Milestone 10 remains in progress because broader model/evaluation listing surfaces and final registry lifecycle coverage are still outstanding.
+- 2026-04-04: Added read-only model registry listing APIs at `/api/v1/evaluations/models` and `/api/v1/evaluations/reports`, with filters for symbol, model type, and model status where applicable, so supervised and RL model records plus persisted evaluation reports are queryable from a single backend surface.
+- 2026-04-04: Validated the new listing slice with approval-gate unit tests, route/schema compile checks, direct service-level SQLite validation for approved/rejected evaluation persistence plus model/report listing behavior, and focused router import checks. Milestone 10 remains in progress because final approved-model registry lifecycle coverage is still outstanding.
+- 2026-04-04: Switched the evaluation API tests to a route-scoped FastAPI test app so Milestone 10 validation no longer depends on unrelated worker/ML imports, and added approved-model registry lifecycle coverage for model replacement and approval revocation on rejection.
+- 2026-04-04: Milestone 10 is complete. Validation passed for approval-gate unit logic, evaluation report persistence, rejection paths, approved-symbol queries, model and evaluation listing APIs, approval replacement/revocation lifecycle behavior, and the focused Milestone 10 API test suite.
 
 ---
 
@@ -453,6 +482,22 @@ Build a production-style MVP for a Forex Trainer & Paper Trading Dashboard that 
 - Signal-to-order flow integration test with mocks
 - Manual dry-run smoke test path
 
+**Progress notes**
+- 2026-04-04: Added a reusable backend paper-trade gate in `libs/trading` that centralizes Milestone 11 enforcement for approved-model lookup, MT5 demo-only safety, and minimum confidence/risk-to-reward checks before any symbol can reach the paper-trade execution path.
+- 2026-04-04: Validated the backend-gating foundation with focused tests covering approved-symbol allow, unapproved-symbol rejection, live-account blocking, low-confidence / low-risk-reward rejection, existing approval-gate unit coverage, and MT5 gateway demo/live safety behavior. Milestone 11 remains in progress because signal generation, order/position persistence flows, sync logic, and trading endpoints are still outstanding.
+- 2026-04-04: Added a paper-trade signal API slice with gated signal creation and signal listing at `/api/v1/trading/signals`, including backend approval/demo-only enforcement, persisted accepted signals, blocked-attempt audit logging, and signal visibility filters by symbol/status.
+- 2026-04-04: Validated the signal slice with focused trading API tests for accepted signal persistence, unapproved-symbol rejection, live-account blocking, signal listing visibility, plus the existing paper-trade gate, approval-gate, and MT5 gateway safety suites. Milestone 11 remains in progress because order/position persistence, execution flow, sync logic, and the remaining trading endpoints are still outstanding.
+- 2026-04-04: Added the signal-to-order execution slice with `/api/v1/trading/orders` and `/api/v1/trading/positions`, mocked MT5 order submission support in the gateway, backend re-checks at execution time, persisted order records, automatic open-position plus trade-execution persistence on filled market orders, and read-only order/position listing filters.
+- 2026-04-04: Validated the execution slice with focused trading API tests for accepted signal-to-order flow, broker rejection handling, order/position listing visibility, paper-trade gate coverage, approval-gate coverage, and MT5 gateway order-submission plus demo/live safety tests. Milestone 11 remains in progress because start/stop controls, close-position behavior, order/position/history sync, and a manual dry-run path are still outstanding.
+- 2026-04-04: Added close-position behavior at `/api/v1/trading/positions/{position_id}/close`, including backend re-checks before close submission, persisted closing-order records, realized PnL calculation on filled closes, close trade-execution persistence, and rejection handling that leaves the original position open when the broker rejects the close.
+- 2026-04-04: Validated the close-position slice with focused trading API tests for successful close persistence, broker-rejected closes, order/position listing visibility, paper-trade gate coverage, approval-gate coverage, and MT5 gateway submission safety tests. Milestone 11 remains in progress because start/stop controls, order/position/history sync, and a manual dry-run path are still outstanding.
+- 2026-04-04: Added runtime paper-trading controls at `/api/v1/trading/status`, `/api/v1/trading/start`, and `/api/v1/trading/stop`, including demo-only backend checks before enablement, persisted runtime state on the MT5 account record, dashboard-visible aggregate counts for approved symbols and accepted/open trading records, and audit logging for runtime state changes.
+- 2026-04-04: Validated the runtime-control slice with focused trading API tests for start-state persistence, live-account blocking, stop-state persistence, plus the existing signal/order/position flow, paper-trade gate coverage, approval-gate coverage, and MT5 gateway safety tests. Milestone 11 remains in progress because order/position/history sync and a manual dry-run smoke path are still outstanding.
+- 2026-04-04: Added explicit MT5 sync at `/api/v1/trading/sync`, including demo-only backend gating before broker reads, order-history reconciliation for submitted orders, open-position reconciliation for unrealized PnL updates, close-history reconciliation for submitted close orders, trade-execution creation, persisted runtime last-sync metadata, and sync audit logging.
+- 2026-04-04: Validated the sync slice with focused trading API tests for submitted-order fill sync, open-position metric refresh, close-position reconciliation from broker history, plus MT5 gateway history/position parsing coverage and the existing paper-trade gate and approval-gate safety suites. Milestone 11 remains in progress because the manual dry-run smoke path is still outstanding.
+- 2026-04-04: Added a manual paper-trading dry-run smoke path at `python -m rl_trade_api.tools.paper_trading_dry_run`, backed by a temporary SQLite database, a route-scoped FastAPI app, and a demo-only fake MT5 gateway so operators can exercise the full paper-trading workflow without touching real broker infrastructure.
+- 2026-04-04: Validated the manual dry-run path by running the command directly and adding dedicated smoke coverage for start, signal creation, submitted order flow, MT5 sync reconciliation, close reconciliation, and stop. Milestone 11 is complete: approved-symbol gating, demo-only backend enforcement, signal/order/position persistence, dashboard-visible trading state, sync logic, and the required validation path are all satisfied.
+
 ---
 
 ### Milestone 12: WebSocket events and realtime progress updates
@@ -481,6 +526,22 @@ Build a production-style MVP for a Forex Trainer & Paper Trading Dashboard that 
 - Event schema tests
 - Manual flow test: ingestion/training updates appear live
 
+**Progress notes**
+- 2026-04-04: Added the Milestone 12 WebSocket foundation with typed live-event schemas, an in-process event broadcaster with replay cursor support, and a `/ws/events` endpoint that streams live or replayed events with optional topic filtering.
+- 2026-04-04: Validated the WebSocket foundation slice with a route-scoped connection smoke test for live delivery, replay-cursor coverage, static-token WebSocket auth coverage, and event schema/replay tests. Milestone 12 remains in progress because backend emitters and the manual live-update flow are still outstanding.
+- 2026-04-04: Added the first backend emitter slice for Milestone 12 by publishing `training_progress` events from the supervised training request and retry services, including live payloads for pending job creation and manual retry requeue events.
+- 2026-04-04: Validated the supervised training emitter slice with route-scoped WebSocket tests that open `/ws/events`, trigger supervised training request and retry flows, and assert that live `training_progress` messages are delivered with typed payloads. Milestone 12 remains in progress because worker-driven emitters for long-running progress and the manual live-update flow are still outstanding.
+- 2026-04-04: Added API-side `ingestion_progress` and `preprocessing_progress` emitters for ingestion request, ingestion retry, and preprocessing request flows, with typed live payloads covering pending job creation and manual retry requeue state.
+- 2026-04-04: Validated the pipeline emitter slice with route-scoped WebSocket tests that open `/ws/events`, trigger ingestion and preprocessing API flows, and assert that live pipeline-progress messages are delivered with typed payloads alongside the existing training-event coverage. Milestone 12 remains in progress because worker-driven long-running progress emitters and the manual live-update flow are still outstanding.
+- 2026-04-04: Added API-side `evaluation_status` and `approval_status` emitters for model evaluation creation so backend approval decisions now publish typed live events for both evaluation outcomes and approval-state changes.
+- 2026-04-04: Validated the evaluation emitter slice with route-scoped WebSocket tests that open `/ws/events`, trigger approved and rejected evaluation flows, and assert that live evaluation/approval messages are delivered with typed payloads alongside the existing training and pipeline event coverage. Milestone 12 remains in progress because worker-driven long-running progress emitters, trading/equity/alert emitters, and the manual live-update flow are still outstanding.
+- 2026-04-04: Added API-side `signal_event` and `position_update` emitters for paper-trading signal acceptance, order submission with immediate fills, and successful close-position flows so trading lifecycle state now publishes typed live events from the backend services.
+- 2026-04-04: Validated the trading emitter slice with route-scoped WebSocket tests that open `/ws/events`, trigger signal creation, order submission, and position close flows, and assert that live `signal_event` and `position_update` messages are delivered alongside the existing trading and Milestone 12 event coverage. Milestone 12 remains in progress because worker-driven long-running progress emitters, sync/equity/alert emitters, and the manual live-update flow are still outstanding.
+- 2026-04-04: Added sync-side trading emitters so `/api/v1/trading/sync` now publishes `position_update` for reconciled position changes and persists `equity_snapshots` plus live `equity_update` events when MT5 account metrics are available from the backend connection state.
+- 2026-04-04: Validated the sync/equity emitter slice with route-scoped WebSocket tests for sync-driven position and equity delivery, trading API assertions for persisted equity snapshots, and MT5 gateway coverage for balance/equity/margin fields in the demo connection state. Milestone 12 remains in progress because worker-driven long-running progress emitters, alert emitters, and the manual live-update flow are still outstanding.
+- 2026-04-04: Added backend `alert` emitters for paper-trading safety blocks so blocked signal submission, blocked runtime start, blocked sync, and other trading guard failures can publish typed live warning events after the corresponding audit records are committed.
+- 2026-04-04: Validated the alert slice with route-scoped WebSocket tests that open `/ws/events`, trigger blocked trading flows, and assert that live `alert` messages are delivered alongside the existing trading, equity, evaluation, pipeline, training, and WebSocket event coverage. Milestone 12 remains in progress because worker-driven long-running progress emitters and the manual live-update flow are still outstanding.
+
 ---
 
 ### Milestone 13: Frontend dashboard pages and workflows
@@ -508,15 +569,26 @@ Build a production-style MVP for a Forex Trainer & Paper Trading Dashboard that 
   - see approval
   - start paper trading
 - Add charts/tables/status badges
+- Add Playwright end-to-end test setup
+- Add reusable Playwright fixtures for auth, seeded demo state, and API mocking where needed
+- Add browser coverage for Chromium first, with optional expansion later
 
 **Done when**
 - Full main user flow is usable from UI
 - Frontend consumes API + WebSocket updates
 - Approved symbol state and job progress are visible
+- Core UI flows have Playwright coverage for happy-path behavior
 
 **Validation**
 - Frontend typecheck/build passes
 - Key page rendering smoke tests pass
+- Playwright happy-path tests pass for:
+  - login
+  - symbol validation
+  - training request submission
+  - job progress visibility
+  - approved model visibility
+  - paper trading start/stop flow
 - Manual walkthrough of primary UX works
 
 ---
@@ -558,6 +630,8 @@ Build a production-style MVP for a Forex Trainer & Paper Trading Dashboard that 
 - Document env vars
 - Add troubleshooting notes
 - Review logging, safety guards, and error handling
+- Add CI execution for Playwright smoke tests
+- Add stable seeded test environment for browser-based test runs
 - Tighten tests for:
   - symbol validation
   - OHLC deduplication
@@ -567,15 +641,18 @@ Build a production-style MVP for a Forex Trainer & Paper Trading Dashboard that 
   - MT5 demo safety
   - signal creation gating
   - API health endpoints
+  - frontend critical-path browser flows
 
 **Done when**
 - Repo can be set up by another engineer
 - Critical flows have automated coverage
 - Docs are usable and accurate
 - Safety guards are present and visible
+- Playwright smoke suite runs reliably in local and CI environments
 
 **Validation**
 - Test suite passes
+- Playwright smoke suite passes
 - README setup followed from clean environment
 - Core smoke path works:
   - validate symbol

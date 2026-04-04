@@ -29,4 +29,6 @@ TASK_ROUTES = {
     "jobs.run_ingestion_probe": {"queue": INGESTION_QUEUE},
     "jobs.run_ingestion_job": {"queue": INGESTION_QUEUE},
     "jobs.run_preprocessing_job": {"queue": PREPROCESSING_QUEUE},
+    "jobs.run_supervised_training_job": {"queue": SUPERVISED_TRAINING_QUEUE},
+    "jobs.run_rl_training_job": {"queue": RL_TRAINING_QUEUE},
 }
