@@ -1,7 +1,7 @@
 PYTHON ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
 NPM ?= npm
 
-.PHONY: install-backend install-frontend test-backend validate-backend validate-db validate-db-timescale validate-frontend db-upgrade db-downgrade-base run-api run-worker run-scheduler run-frontend
+.PHONY: install-backend install-frontend test-backend validate-backend validate-db validate-db-timescale validate-frontend validate-compose validate-compose-gpu compose-build compose-up compose-up-gpu compose-down compose-ps db-upgrade db-downgrade-base run-api run-worker run-scheduler run-frontend
 
 install-backend:
 	$(PYTHON) -m pip install -e .[dev]
@@ -23,6 +23,28 @@ validate-db-timescale:
 
 validate-frontend:
 	$(NPM) run frontend:build
+
+validate-compose:
+	docker compose config
+
+validate-compose-gpu:
+	docker compose -f compose.yaml -f docker/compose.gpu.yaml config
+
+compose-build:
+	docker build -t rl-trade-python:local -f docker/python.Dockerfile .
+	docker build -t rl-trade-frontend:latest -f docker/frontend.Dockerfile .
+
+compose-up:
+	docker compose up -d
+
+compose-up-gpu:
+	docker compose -f compose.yaml -f docker/compose.gpu.yaml up -d
+
+compose-down:
+	docker compose down --remove-orphans
+
+compose-ps:
+	docker compose ps
 
 db-upgrade:
 	$(PYTHON) -m alembic upgrade head

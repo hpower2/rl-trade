@@ -50,7 +50,6 @@ def test_worker_cli_bootstrap_starts_celery_runtime(monkeypatch) -> None:
     run_worker()
 
     assert captured["worker"] == [
-        "celery",
         "worker",
         "--loglevel",
         "info",
@@ -73,7 +72,6 @@ def test_scheduler_cli_bootstrap_starts_beat_runtime(monkeypatch) -> None:
     run_scheduler()
 
     assert captured["scheduler"] == [
-        "celery",
         "beat",
         "--loglevel",
         "info",

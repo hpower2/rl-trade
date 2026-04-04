@@ -31,7 +31,6 @@ def test_worker_and_scheduler_argv_respect_runtime_settings() -> None:
     )
 
     assert build_worker_argv(settings) == [
-        "celery",
         "worker",
         "--loglevel",
         "warning",
@@ -43,7 +42,6 @@ def test_worker_and_scheduler_argv_respect_runtime_settings() -> None:
         "trading,maintenance",
     ]
     assert build_scheduler_argv(settings) == [
-        "celery",
         "beat",
         "--loglevel",
         "warning",

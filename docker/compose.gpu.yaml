@@ -1,0 +1,6 @@
+services:
+  training_worker:
+    gpus: ${TRAINING_WORKER_GPUS:-all}
+    environment:
+      REQUIRE_CUDA: ${TRAINING_WORKER_REQUIRE_CUDA:-true}
+      NVIDIA_VISIBLE_DEVICES: ${TRAINING_WORKER_NVIDIA_VISIBLE_DEVICES:-all}

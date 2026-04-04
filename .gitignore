@@ -15,3 +15,5 @@ dist/
 coverage/
 npm-debug.log*
 *.tsbuildinfo
+apps/frontend/output/
+.playwright-cli/

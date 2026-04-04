@@ -46,6 +46,7 @@ make run-worker
 make run-scheduler
 make run-frontend
 PYTHONPATH=apps/api/src:libs/common/src:libs/data/src:libs/trading/src python -m rl_trade_api.tools.paper_trading_dry_run
+PYTHONPATH=apps/api/src:apps/worker/src:libs/common/src:libs/data/src:libs/features/src:libs/ml/src:libs/trading/src python -m rl_trade_api.tools.websocket_event_dry_run
 ```
 
 Copy `.env.example` to `.env` before connecting real infrastructure. Safety checks keep live trading disabled by default.
@@ -55,3 +56,5 @@ For local Milestone 3 API work, auth defaults to `API_AUTH_MODE=disabled`. Use `
 For the Milestone 4 worker runtime, `WORKER_QUEUES`, `WORKER_CONCURRENCY`, and `WORKER_PREFETCH_MULTIPLIER` control the Celery worker entry point, while `SCHEDULER_HEARTBEAT_INTERVAL_SECONDS` and `SCHEDULER_MAX_INTERVAL_SECONDS` control the beat scheduler's maintenance heartbeat cadence.
 
 For the Milestone 11 manual paper-trading smoke path, run `python -m rl_trade_api.tools.paper_trading_dry_run` with the backend `PYTHONPATH` shown above. The dry run uses an in-memory FastAPI test surface, a temporary SQLite database, and a demo-only fake MT5 gateway so it exercises the current paper-trading workflow without touching real broker infrastructure.
+
+For the Milestone 12 manual live-update smoke path, run `python -m rl_trade_api.tools.websocket_event_dry_run` with the expanded `PYTHONPATH` shown above. The dry run opens `/ws/events` against a temporary FastAPI app, runs eager ingestion and supervised-training jobs, and prints the live WebSocket status sequence for both flows.

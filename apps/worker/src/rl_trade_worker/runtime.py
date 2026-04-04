@@ -21,7 +21,6 @@ def parse_worker_queue_names(queue_names: str) -> tuple[str, ...]:
 def build_worker_argv(settings: Settings) -> list[str]:
     queue_names = parse_worker_queue_names(settings.worker_queues)
     return [
-        "celery",
         "worker",
         "--loglevel",
         settings.log_level.lower(),
@@ -36,7 +35,6 @@ def build_worker_argv(settings: Settings) -> list[str]:
 
 def build_scheduler_argv(settings: Settings) -> list[str]:
     return [
-        "celery",
         "beat",
         "--loglevel",
         settings.log_level.lower(),
