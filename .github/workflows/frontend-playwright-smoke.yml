@@ -1,0 +1,43 @@
+name: Frontend Playwright Smoke
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  playwright-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+        working-directory: apps/frontend
+
+      - name: Run frontend unit tests
+        run: npm run frontend:test
+
+      - name: Run Playwright smoke suite
+        run: npm run frontend:test:e2e
+
+      - name: Upload Playwright artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts
+          path: apps/frontend/output/playwright
+          if-no-files-found: ignore

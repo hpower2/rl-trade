@@ -1,7 +1,8 @@
 PYTHON ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
 NPM ?= npm
+DOCKER_BUILDKIT ?= 1
 
-.PHONY: install-backend install-frontend test-backend validate-backend validate-db validate-db-timescale validate-frontend validate-compose validate-compose-gpu compose-build compose-up compose-up-gpu compose-down compose-ps db-upgrade db-downgrade-base run-api run-worker run-scheduler run-frontend
+.PHONY: install-backend install-frontend test-backend validate-backend validate-db validate-db-timescale validate-frontend validate-core-smoke validate-compose validate-compose-gpu validate-compose-runtime validate-compose-gpu-host validate-compose-gpu-runtime compose-build compose-up compose-up-gpu compose-down compose-ps db-upgrade db-downgrade-base run-api run-worker run-scheduler run-frontend
 
 install-backend:
 	$(PYTHON) -m pip install -e .[dev]
@@ -24,15 +25,27 @@ validate-db-timescale:
 validate-frontend:
 	$(NPM) run frontend:build
 
+validate-core-smoke:
+	$(PYTHON) -m rl_trade_api.tools.core_workflow_dry_run
+
 validate-compose:
 	docker compose config
 
 validate-compose-gpu:
 	docker compose -f compose.yaml -f docker/compose.gpu.yaml config
 
+validate-compose-runtime:
+	$(PYTHON) docker/scripts/verify_compose_runtime.py
+
+validate-compose-gpu-host:
+	$(PYTHON) docker/scripts/verify_gpu_host.py
+
+validate-compose-gpu-runtime:
+	$(PYTHON) docker/scripts/verify_training_worker_gpu.py
+
 compose-build:
-	docker build -t rl-trade-python:local -f docker/python.Dockerfile .
-	docker build -t rl-trade-frontend:latest -f docker/frontend.Dockerfile .
+	DOCKER_BUILDKIT=$(DOCKER_BUILDKIT) docker build -t rl-trade-python:local -f docker/python.Dockerfile .
+	DOCKER_BUILDKIT=$(DOCKER_BUILDKIT) docker build -t rl-trade-frontend:latest -f docker/frontend.Dockerfile .
 
 compose-up:
 	docker compose up -d

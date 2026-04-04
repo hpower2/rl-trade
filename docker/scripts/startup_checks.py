@@ -6,13 +6,20 @@ import argparse
 import importlib.util
 import logging
 import os
+import sys
 import time
 from collections.abc import Callable
+from pathlib import Path
 
 from redis import Redis
 from sqlalchemy import create_engine, text
 
-from rl_trade_common import get_settings
+try:
+    from rl_trade_common import get_settings
+except ModuleNotFoundError:  # pragma: no cover - repo-local script fallback
+    repo_root = Path(__file__).resolve().parents[2]
+    sys.path.insert(0, str(repo_root / "libs" / "common" / "src"))
+    from rl_trade_common import get_settings
 
 CheckFn = Callable[[], tuple[bool, str]]
 
@@ -171,7 +178,25 @@ def check_cuda(*, require_cuda: bool) -> tuple[bool, str]:
             return False, "CUDA is required but no device is available"
         return False, "CUDA is unavailable; training will degrade to CPU mode"
 
-    return True, f"CUDA available with {torch.cuda.device_count()} device(s)"
+    device_count = torch.cuda.device_count()
+    device_names = ", ".join(torch.cuda.get_device_name(index) for index in range(device_count))
+    visible_devices = describe_visible_devices(os.getenv("NVIDIA_VISIBLE_DEVICES", ""))
+
+    return True, (
+        f"CUDA available with {device_count} device(s) "
+        f"[visible_devices={visible_devices}]: {device_names}"
+    )
+
+
+def describe_visible_devices(raw_visible_devices: str) -> str:
+    normalized = raw_visible_devices.strip()
+    if not normalized:
+        return "runtime-managed"
+
+    if normalized.lower() in {"void", "none"}:
+        return "runtime-managed"
+
+    return normalized
 
 
 if __name__ == "__main__":

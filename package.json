@@ -8,6 +8,8 @@
   "scripts": {
     "frontend:build": "npm run build --workspace @rl-trade/frontend",
     "frontend:dev": "npm run dev --workspace @rl-trade/frontend",
-    "frontend:preview": "npm run preview --workspace @rl-trade/frontend"
+    "frontend:preview": "npm run preview --workspace @rl-trade/frontend",
+    "frontend:test": "npm run test --workspace @rl-trade/frontend",
+    "frontend:test:e2e": "npm run test:e2e --workspace @rl-trade/frontend"
   }
 }

@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.7
+
 FROM node:20-alpine
 
 WORKDIR /app
@@ -5,7 +7,8 @@ WORKDIR /app
 COPY package.json package-lock.json /app/
 COPY apps/frontend/package.json /app/apps/frontend/package.json
 
-RUN npm install
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --cache /root/.npm
 
 COPY apps/frontend /app/apps/frontend
 
