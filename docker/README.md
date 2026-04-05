@@ -5,7 +5,7 @@ Milestone 14 introduces the base container/runtime assets for the stack:
 - `../compose.yaml`: Docker Compose stack for `postgres`, `redis`, `migrate`, `api`, `worker`, `training_worker`, `scheduler`, and `frontend`
 - `compose.gpu.yaml`: optional GPU override for the dedicated `training_worker`
 - `python.Dockerfile`: shared Python image used by the API, workers, scheduler, and migration job
-- `frontend.Dockerfile`: Node/Vite image for the frontend preview runtime
+- `frontend.Dockerfile`: multi-stage frontend image that builds the Vite app and serves it behind Nginx
 - `scripts/startup_checks.py`: startup readiness checks for DB, Redis, MT5, and CUDA logging
 - `scripts/start-python-service.sh`: tiny wrapper that runs startup checks before the target process
 
@@ -55,17 +55,18 @@ The default stack now isolates CPU and GPU-adjacent workloads:
 
 That keeps the general worker lane runnable on non-GPU hosts while giving the training lane its own CUDA policy and queue ownership.
 
-If your machine already uses `5432`, `6379`, `8000`, or `4173`, override the host-published ports without changing the in-container service ports:
+If your machine already uses `5432`, `6379`, or `4173`, override the host-published ports without changing the in-container service ports:
 
 ```bash
 POSTGRES_HOST_PORT=55432 \
 REDIS_HOST_PORT=56379 \
-API_HOST_PORT=58000 \
 FRONTEND_HOST_PORT=54173 \
 docker compose up -d
 ```
 
 When you use alternate host ports, update any host-side clients accordingly. For example, a local backend process should point `DATABASE_URL` at `localhost:${POSTGRES_HOST_PORT}` and `REDIS_URL` at `localhost:${REDIS_HOST_PORT}`.
+
+The Compose topology now keeps the API on the internal Docker network. Only the frontend host port is published, and Nginx in the frontend container proxies `/api` and `/ws` traffic to the `api` service. That keeps browser traffic same-origin and removes the need to expose the backend directly on the host for standard dashboard usage.
 
 The Compose file intentionally reuses the prebuilt `rl-trade-python:local` image across `migrate`, `api`, `worker`, and `scheduler`. That keeps local validation from unpacking four duplicate copies of the same dependency-heavy image during `docker compose up`.
 

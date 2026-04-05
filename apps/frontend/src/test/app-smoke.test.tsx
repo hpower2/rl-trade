@@ -174,6 +174,12 @@ describe("frontend workspace smoke tests", () => {
     expect(screen.getByText(/manual walkthrough mode is active/i)).toBeInTheDocument();
   });
 
+  it("defaults the API base URL to the current frontend origin", () => {
+    render(<App />);
+
+    expect(screen.getByLabelText(/api base url/i)).toHaveValue(window.location.origin);
+  });
+
   it("opens the overview workspace after session authentication", async () => {
     render(<App />);
 

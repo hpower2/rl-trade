@@ -46,7 +46,6 @@ If host ports are already taken, override these values in `.env`:
 
 - `POSTGRES_HOST_PORT`
 - `REDIS_HOST_PORT`
-- `API_HOST_PORT`
 - `FRONTEND_HOST_PORT`
 
 ## 3. Run The Main Local Surfaces
@@ -70,6 +69,8 @@ make compose-build
 docker compose up -d
 make validate-compose-runtime
 ```
+
+The Compose stack publishes the frontend host port only. Browser calls to `/api` and `/ws` go through the frontend reverse proxy to the internal `api` service.
 
 For GPU-backed training validation, use the GPU override only on a host with NVIDIA container runtime support:
 

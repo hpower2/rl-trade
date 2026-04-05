@@ -114,7 +114,7 @@ Copy `.env.example` to `.env` and treat it as the single local override file for
 ### Docker Compose and GPU overrides
 
 - `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`: Compose database bootstrap values.
-- `POSTGRES_HOST_PORT`, `REDIS_HOST_PORT`, `API_HOST_PORT`, `FRONTEND_HOST_PORT`: host-published port overrides when default ports are already in use.
+- `POSTGRES_HOST_PORT`, `REDIS_HOST_PORT`, `FRONTEND_HOST_PORT`: host-published port overrides when default ports are already in use. The Compose stack keeps the API on the internal Docker network and exposes the frontend host port only.
 - `TRAINING_WORKER_REQUIRE_CUDA`: fail closed for the Compose `training_worker` when a GPU is expected but unavailable.
 - `TRAINING_WORKER_NVIDIA_VISIBLE_DEVICES`, `TRAINING_WORKER_GPUS`: optional NVIDIA runtime selectors for the GPU override stack.
 
@@ -124,8 +124,10 @@ Copy `.env.example` to `.env` and treat it as the single local override file for
   Set `API_AUTH_MODE=static_token` and provide `API_AUTH_TOKEN`. Disabled auth is rejected by settings validation outside local and dev-style workflows.
 - Compose services cannot reach Postgres or Redis:
   Inside Docker Compose, use the container hostnames from `compose.yaml` defaults such as `postgres` and `redis`, not `localhost`.
-- Host ports `5432`, `6379`, `8000`, or `4173` are already taken:
-  Override `POSTGRES_HOST_PORT`, `REDIS_HOST_PORT`, `API_HOST_PORT`, and `FRONTEND_HOST_PORT` instead of editing in-container service ports.
+- Host ports `5432`, `6379`, or `4173` are already taken:
+  Override `POSTGRES_HOST_PORT`, `REDIS_HOST_PORT`, and `FRONTEND_HOST_PORT` instead of editing in-container service ports.
+- Docker Compose frontend cannot reach the API directly from the browser:
+  That is expected now. Use the frontend host port and let the frontend reverse proxy `/api` and `/ws` traffic to the internal `api` service.
 - The GPU override stack does not start cleanly:
   Run `make validate-compose-gpu-host` first, then boot with `docker compose -f compose.yaml -f docker/compose.gpu.yaml up -d`, and finish with `make validate-compose-gpu-runtime`.
 - `training_worker` falls back to CPU:

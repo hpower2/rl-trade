@@ -13,6 +13,18 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
+def _normalize_ports(raw_ports: object) -> list[dict[str, object]]:
+    normalized: list[dict[str, object]] = []
+    for entry in raw_ports if isinstance(raw_ports, list) else []:
+        if isinstance(entry, dict):
+            normalized.append(entry)
+            continue
+        if isinstance(entry, str) and ":" in entry:
+            published, target = entry.split(":", 1)
+            normalized.append({"published": published, "target": int(target)})
+    return normalized
+
+
 def _load_compose_config(*extra_files: str) -> dict[str, object]:
     if shutil.which("docker") is None:
         pytest.skip("docker is required for Compose config validation")
@@ -44,6 +56,27 @@ def test_base_compose_isolates_cpu_and_training_workers() -> None:
     assert training_worker["environment"]["WORKER_QUEUES"] == "supervised_training,rl_training"
     assert training_worker["environment"]["REQUIRE_CUDA"] == "false"
     assert training_worker["command"][2] == "training_worker"
+
+
+def test_compose_exposes_frontend_only_and_keeps_api_internal() -> None:
+    config = _load_compose_config()
+    services = config["services"]
+
+    api = services["api"]
+    frontend = services["frontend"]
+
+    assert "ports" not in api
+    assert api["expose"] == ["8000"]
+
+    frontend_ports = _normalize_ports(frontend["ports"])
+    assert frontend_ports == [
+        {
+            "mode": "ingress",
+            "target": 80,
+            "published": "4173",
+            "protocol": "tcp",
+        }
+    ]
 
 
 def test_gpu_override_targets_only_training_worker() -> None:

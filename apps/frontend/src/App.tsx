@@ -7,8 +7,19 @@ import type { WorkspaceAccess } from "./features/workspace/types";
 import { getManualWalkthroughLabel } from "./mock-operator/runtime";
 import "./app.css";
 
+function getDefaultAPIBaseUrl(): string {
+  const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL;
+  if (configuredBaseUrl) {
+    return normalizeBaseUrl(configuredBaseUrl);
+  }
+  if (typeof window !== "undefined" && window.location.origin) {
+    return normalizeBaseUrl(window.location.origin);
+  }
+  return normalizeBaseUrl("http://127.0.0.1:8000");
+}
+
 const defaultAPIBaseUrl = normalizeBaseUrl(
-  import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000",
+  getDefaultAPIBaseUrl(),
 );
 
 export function App() {

@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-FROM node:20-alpine
+FROM node:20-alpine AS build
 
 WORKDIR /app
 
@@ -16,6 +16,9 @@ WORKDIR /app/apps/frontend
 
 RUN npm run build
 
-EXPOSE 4173
+FROM nginx:1.27-alpine
 
-CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0", "--port", "4173", "--strictPort"]
+COPY docker/frontend.nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/apps/frontend/dist /usr/share/nginx/html
+
+EXPOSE 80

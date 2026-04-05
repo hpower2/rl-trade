@@ -76,7 +76,6 @@ def test_env_example_covers_critical_runtime_and_safety_variables() -> None:
         "MODEL_APPROVAL_MIN_RISK_REWARD",
         "POSTGRES_HOST_PORT",
         "REDIS_HOST_PORT",
-        "API_HOST_PORT",
         "FRONTEND_HOST_PORT",
         "TRAINING_WORKER_REQUIRE_CUDA",
         "TRAINING_WORKER_NVIDIA_VISIBLE_DEVICES",
@@ -100,6 +99,7 @@ def test_readme_documents_environment_variables_and_troubleshooting() -> None:
     assert "TRAINING_WORKER_QUEUES" in readme_text
     assert "PAPER_TRADING_ONLY" in readme_text
     assert "ALLOW_LIVE_TRADING" in readme_text
+    assert "frontend reverse proxy" in readme_text
     assert "make validate-compose-gpu-host" in readme_text
     assert "make validate-compose-gpu-runtime" in readme_text
 
