@@ -52,7 +52,11 @@ def get_mt5_gateway() -> MT5Gateway:
 
 
 def get_event_broadcaster(request: Request) -> EventBroadcaster:
-    return request.app.state.event_broadcaster
+    broadcaster = getattr(request.app.state, "event_broadcaster", None)
+    if broadcaster is None:
+        broadcaster = EventBroadcaster()
+        request.app.state.event_broadcaster = broadcaster
+    return broadcaster
 
 
 def get_optional_principal(

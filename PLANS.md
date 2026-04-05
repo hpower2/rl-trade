@@ -30,7 +30,7 @@ Build a production-style MVP for a Forex Trainer & Paper Trading Dashboard that 
 - [x] Milestone 12: WebSocket events and realtime progress updates
 - [x] Milestone 13: Frontend dashboard pages and workflows
 - [x] Milestone 14: Docker Compose, GPU wiring, and runtime validation
-- [ ] Milestone 15: Seed data, smoke tests, docs, and final hardening
+- [x] Milestone 15: Seed data, smoke tests, docs, and final hardening
 
 ---
 
@@ -743,6 +743,30 @@ Build a production-style MVP for a Forex Trainer & Paper Trading Dashboard that 
 - 2026-04-04: Added a dedicated `rl_trade_api.tools.core_workflow_dry_run` command plus `make validate-core-smoke` so the repo now has one repeatable in-process backend smoke path that validates symbol intake, ingestion, preprocessing, supervised training, evaluation/approval, and the demo-only paper-trading lane from a temporary seeded workspace.
 - 2026-04-04: Added `tests/smoke/test_core_workflow_dry_run.py` so the command-backed critical-path smoke path is exercised in automated coverage instead of living only as a manual operator command.
 - 2026-04-04: Re-validated this critical-path smoke slice with `make validate-core-smoke`, `pytest tests/smoke/test_core_workflow_dry_run.py -q`, `python3 -m py_compile apps/api/src/rl_trade_api/tools/core_workflow_dry_run.py tests/smoke/test_core_workflow_dry_run.py`, and `git diff --check`. Milestone 15 remains in progress because broader docs polish, additional smoke/hardening coverage, and the final completion sweep are still outstanding.
+- 2026-04-05: Extended the Milestone 15 core backend smoke path so the temporary FastAPI app now probes `/health`, `/health/db`, `/health/redis`, and `/api/v1/system/status` before running the seeded validate-to-paper-trade workflow, with repo-local overrides that keep DB and Redis health checks deterministic inside the dry run.
+- 2026-04-05: Re-validated this API-health smoke slice with `python3 -m py_compile apps/api/src/rl_trade_api/tools/core_workflow_dry_run.py tests/smoke/test_core_workflow_dry_run.py tests/api/test_health.py`, `.venv/bin/python -m pytest tests/api/test_health.py tests/smoke/test_core_workflow_dry_run.py -q` (`4 passed in 31.89s`), and `make validate-core-smoke`. Milestone 15 remains in progress because broader docs polish, additional smoke/hardening coverage, and the final completion sweep are still outstanding.
+- 2026-04-05: Added `docs/setup.md` as a dedicated local setup runbook that walks a new engineer through safe `.env` preparation, local process startup, Compose startup, and the repo's milestone smoke commands from install through validation.
+- 2026-04-05: Tightened the setup-doc smoke coverage so `tests/smoke/test_setup_docs.py` now asserts the runbook includes clean install steps, safety defaults, runtime startup commands, and the current backend/frontend smoke commands. Re-validated this docs slice with `python3 -m py_compile tests/smoke/test_setup_docs.py`, `.venv/bin/python -m pytest tests/smoke/test_setup_docs.py -q` (`3 passed in 0.01s`), and `git diff --check`. Milestone 15 remains in progress because additional smoke/hardening coverage and the final completion sweep are still outstanding.
+- 2026-04-05: Tightened the docs hardening coverage again so `tests/smoke/test_setup_docs.py` now verifies the `make`, `npm run`, and repo-local `python -m rl_trade_*` commands documented in `README.md` and `docs/setup.md` still resolve to real Makefile targets, npm scripts, and importable dry-run modules.
+- 2026-04-05: Re-validated this docs/tooling-sync slice with `python3 -m py_compile tests/smoke/test_setup_docs.py`, `.venv/bin/python -m pytest tests/smoke/test_setup_docs.py -q` (`4 passed in 0.02s`), and `git diff --check`. Milestone 15 remains in progress because additional smoke/hardening coverage and the final completion sweep are still outstanding.
+- 2026-04-05: Added `.github/workflows/backend-smoke.yml` so GitHub Actions now runs the Milestone 15 backend docs and smoke lane on pull requests and pushes to `main`, covering the setup-doc checks, API health endpoint tests, and the command-backed core validate-to-paper-trade dry run.
+- 2026-04-05: Re-validated this backend-CI slice locally with `.venv/bin/python -m pytest tests/smoke/test_setup_docs.py tests/api/test_health.py tests/smoke/test_core_workflow_dry_run.py -q` (`8 passed in 28.53s`), `make validate-core-smoke`, and `git diff --check`. Milestone 15 remains in progress because additional smoke/hardening coverage and the final completion sweep are still outstanding.
+- 2026-04-05: Added `make validate-hardening-backend` as a curated Milestone 15 backend regression lane for symbol validation, ingestion dedup/resume behavior, candlestick pattern detection, feature calculations, approval gating, MT5 demo safety, paper-trade gate checks, and the signal-creation API block/allow paths. Wired this lane into `.github/workflows/backend-smoke.yml` so the backend smoke workflow now exercises both the seeded end-to-end dry run and the focused hardening suite.
+- 2026-04-05: Re-validated this hardening-regression slice with `make validate-hardening-backend` after fixing an initial `pytest -k` filter mistake that excluded the non-API modules. Final validation passed with `40 passed in 0.62s` for the curated module suite, `3 passed, 11 deselected in 0.50s` for the filtered signal-creation API checks, and `git diff --check`. Milestone 15 remains in progress because the final completion sweep and milestone-wide validation are still outstanding.
+- 2026-04-05: Added `tests/smoke/test_ci_workflows.py` so the repo now smoke-checks both GitHub Actions smoke workflows themselves, ensuring the backend workflow still runs the docs/health/core-smoke/hardening commands and the frontend workflow still runs the Playwright install plus frontend unit and browser smoke lanes on pull requests and pushes to `main`.
+- 2026-04-05: Re-validated this CI-workflow smoke slice with `python3 -m py_compile tests/smoke/test_ci_workflows.py`, `.venv/bin/python -m pytest tests/smoke/test_ci_workflows.py -q` (`2 passed in 0.01s`), and `git diff --check`. Milestone 15 remains in progress because the final completion sweep and milestone-wide validation are still outstanding.
+- 2026-04-05: Added `make validate-milestone15` as a one-command Milestone 15 checkpoint that bundles the docs/workflow smoke tests, API health plus core backend smoke coverage, the curated backend hardening lane, and the frontend unit plus Playwright browser smoke suites. Updated `README.md` and `docs/setup.md` so operators have a documented single-command validation path.
+- 2026-04-05: Re-validated this milestone-checkpoint slice with `make validate-milestone15` after fixing two reliability issues discovered during the first runs: the bundled Playwright step now forces a fresh server launch and uses a configurable preview port via `apps/frontend/playwright.config.ts`, with the checkpoint target pinned to `PLAYWRIGHT_PORT=4174` to avoid local `4173` collisions. Final validation passed with `10 passed in 28.92s` for the docs/workflow/health/core-smoke pytest slice, `40 passed in 0.66s` for the curated backend hardening suite, `3 passed, 11 deselected in 0.51s` for the filtered signal-creation API checks, a successful `make validate-core-smoke`, `6 passed` for the frontend Vitest smoke suite, `1 passed (4.8s)` for the Playwright browser smoke suite, and `git diff --check`. Milestone 15 remains in progress because the final completion sweep and milestone-wide validation review are still outstanding.
+- 2026-04-05: Replaced the stale placeholder validation-command section in `PLANS.md` with the repo's real Make/npm validation commands for backend, worker, frontend, and infra workflows, so the plan now matches the current Milestone 15 operator path instead of generic TODO text.
+- 2026-04-05: Re-validated this plan-alignment slice with `python3 -m py_compile tests/smoke/test_setup_docs.py`, `.venv/bin/python -m pytest tests/smoke/test_setup_docs.py -q` (`5 passed in 0.02s`), and `git diff --check`. Milestone 15 remains in progress because the final completion sweep and milestone-wide validation review are still outstanding.
+- 2026-04-05: Added a dedicated `Safety Guarantees` section to `README.md` so the demo-only policy, backend-enforced MT5/live-account blocking, approved-model gate, approval thresholds, fail-safe dependency behavior, and worker-only long-running execution rules are visible in one place for operators and reviewers.
+- 2026-04-05: Re-validated this safety-visibility docs slice with `python3 -m py_compile tests/smoke/test_setup_docs.py`, `.venv/bin/python -m pytest tests/smoke/test_setup_docs.py -q` (`5 passed in 0.02s`), and `git diff --check`. Milestone 15 remains in progress because the final completion sweep and milestone-wide validation review are still outstanding.
+- 2026-04-05: Continued the Milestone 15 final completion sweep after `make test-backend` exposed two backend regressions: evaluation API tests could fail on custom FastAPI apps that had no `event_broadcaster` state, and the ingestion/preprocessing/supervised-training API tests could no longer monkeypatch the expected enqueue task handles after the service modules switched to fully local worker imports.
+- 2026-04-05: Fixed those completion-sweep blockers by making `get_event_broadcaster` lazily install a safe in-process `EventBroadcaster` fallback on app state and by restoring lazy module-level enqueue task handles in the ingestion, preprocessing, and training services so backend task dispatch stays worker-backed while the API compatibility tests can still patch the documented `run_*_job.delay` symbols.
+- 2026-04-05: Re-validated this final-sweep blocker slice with `python3 -m py_compile apps/api/src/rl_trade_api/api/deps.py apps/api/src/rl_trade_api/services/ingestion.py apps/api/src/rl_trade_api/services/preprocessing.py apps/api/src/rl_trade_api/services/training.py`, `.venv/bin/python -m pytest tests/api/test_evaluations_api.py tests/api/test_ingestion_api.py tests/api/test_preprocessing_api.py tests/api/test_supervised_training_api.py tests/api/test_training_request_api.py -q` (`21 passed in 2.58s`), `make test-backend` (`194 passed, 1 skipped in 68.68s`), and `make validate-milestone15` (docs/workflow smoke `11 passed in 29.45s`, curated hardening `40 passed in 0.65s`, trading gate API checks `3 passed, 11 deselected in 0.51s`, successful core workflow dry run, frontend Vitest `6 passed`, and Playwright browser smoke `1 passed in 4.7s`). Milestone 15 remains in progress pending an explicit clean-environment setup validation against the README/setup runbook before the milestone can be marked complete.
+- 2026-04-05: Added `rl_trade_api.tools.validate_clean_setup` plus `make validate-clean-setup` so the repo now has a command-backed clean-room setup proof that copies the current workspace into a temporary directory, copies `.env.example` to `.env`, creates a fresh virtualenv, installs the editable backend package, validates backend bootstrap, installs frontend dependencies, installs Playwright Chromium, and runs the frontend unit smoke suite without mutating the main workspace.
+- 2026-04-05: Updated `README.md`, `docs/setup.md`, `Makefile`, and the setup-doc smoke coverage so the clean-setup validator is documented, included in the Milestone 15 operator path, and covered by `tests/smoke/test_clean_setup_validation.py` plus the existing docs/tooling-sync checks.
+- 2026-04-05: Re-validated the clean-setup and final completion slice with `python3 -m py_compile apps/api/src/rl_trade_api/tools/validate_clean_setup.py tests/smoke/test_clean_setup_validation.py tests/smoke/test_setup_docs.py`, `.venv/bin/python -m pytest tests/smoke/test_clean_setup_validation.py tests/smoke/test_setup_docs.py -q` (`6 passed in 0.09s`), `make validate-clean-setup` (temporary workspace setup proof completed successfully, including fresh backend install, backend bootstrap validation, `npm install`, `npx playwright install --with-deps chromium`, and frontend Vitest smoke), `make validate-milestone15` (docs/workflow smoke `12 passed in 29.45s`, curated hardening `40 passed in 0.67s`, trading gate API checks `3 passed, 11 deselected in 0.52s`, successful core workflow dry run, frontend Vitest `6 passed`, and Playwright browser smoke `1 passed in 4.7s`), and `make test-backend` (`195 passed, 1 skipped in 70.17s`). Milestone 15 is complete.
 
 ---
 
@@ -773,30 +797,36 @@ The backend must never execute a trade unless all of the following are true:
 ---
 
 ## Validation commands
-These commands are placeholders and should be updated to match the actual repo tooling as files are created.
+These commands reflect the current repo tooling for the Milestone 15 validation surface.
 
 ### Backend
-- run backend tests
-- run backend lint
-- run backend type checks
-- start API app locally
+- `make test-backend`
+- `make validate-backend`
+- `make validate-core-smoke`
+- `make validate-hardening-backend`
+- `make validate-clean-setup`
+- `make validate-milestone15`
+- `make run-api`
 
 ### Worker
-- run worker tests
-- start Celery worker
-- start scheduler
-- run sample task
+- `make run-worker`
+- `make run-scheduler`
+- `make validate-core-smoke`
 
 ### Frontend
-- install dependencies
-- run frontend typecheck
-- run frontend build
-- run frontend tests
+- `npm install`
+- `npm run frontend:test`
+- `npm run frontend:test:e2e`
+- `make validate-frontend`
 
 ### Infra
-- run Alembic migrations
-- run Docker Compose config validation
-- boot stack with Docker Compose
+- `make db-upgrade`
+- `make validate-db`
+- `make validate-db-timescale`
+- `make validate-compose`
+- `make compose-build`
+- `make compose-up`
+- `make compose-down`
 
 ---
 

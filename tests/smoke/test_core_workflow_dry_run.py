@@ -22,6 +22,8 @@ def test_core_workflow_dry_run_command_completes() -> None:
     )
 
     assert completed.returncode == 0, completed.stderr or completed.stdout
+    assert "health api_status=ok" in completed.stdout
+    assert "component_health db=ok redis=ok" in completed.stdout
     assert "validated symbol=EURUSD" in completed.stdout
     assert "ingestion status=succeeded" in completed.stdout
     assert "preprocessing status=succeeded" in completed.stdout
@@ -30,4 +32,5 @@ def test_core_workflow_dry_run_command_completes() -> None:
     assert "signal status=accepted" in completed.stdout
     assert "order status=submitted" in completed.stdout
     assert "positions count=1" in completed.stdout
+    assert "summary symbol_code=EURUSD api_health_status=ok db_health_status=ok redis_health_status=ok" in completed.stdout
     assert "Core workflow dry run completed." in completed.stdout

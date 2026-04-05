@@ -17,7 +17,14 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 try:
-    from rl_trade_api.api.deps import get_api_settings, get_db_session, get_mt5_gateway, require_authenticated_principal
+    from rl_trade_api.api.deps import (
+        get_api_settings,
+        get_db_engine,
+        get_db_session,
+        get_mt5_gateway,
+        get_redis_client,
+        require_authenticated_principal,
+    )
     from rl_trade_api.api.router import router as api_router
     from rl_trade_api.core.errors import register_exception_handlers
     from rl_trade_api.services.auth import AuthPrincipal
@@ -43,7 +50,14 @@ except ModuleNotFoundError:  # pragma: no cover - repo-local script fallback
     sys.path.insert(0, str(repo_root / "libs" / "features" / "src"))
     sys.path.insert(0, str(repo_root / "libs" / "ml" / "src"))
     sys.path.insert(0, str(repo_root / "libs" / "trading" / "src"))
-    from rl_trade_api.api.deps import get_api_settings, get_db_session, get_mt5_gateway, require_authenticated_principal
+    from rl_trade_api.api.deps import (
+        get_api_settings,
+        get_db_engine,
+        get_db_session,
+        get_mt5_gateway,
+        get_redis_client,
+        require_authenticated_principal,
+    )
     from rl_trade_api.api.router import router as api_router
     from rl_trade_api.core.errors import register_exception_handlers
     from rl_trade_api.services.auth import AuthPrincipal
@@ -65,6 +79,11 @@ except ModuleNotFoundError:  # pragma: no cover - repo-local script fallback
 @dataclass(frozen=True, slots=True)
 class CoreWorkflowDryRunSummary:
     symbol_code: str
+    api_health_status: str
+    db_health_status: str
+    redis_health_status: str
+    gpu_health_status: str
+    system_status: str
     ingestion_status: str
     candles_written: int
     preprocessing_status: str
@@ -228,6 +247,11 @@ class DryRunMT5Gateway:
         ]
 
 
+class DryRunRedisClient:
+    def ping(self) -> bool:
+        return True
+
+
 def run_dry_run(*, stdout: TextIO | None = None) -> CoreWorkflowDryRunSummary:
     output = stdout
     with TemporaryDirectory(prefix="rl-trade-core-workflow-") as temp_dir:
@@ -236,6 +260,36 @@ def run_dry_run(*, stdout: TextIO | None = None) -> CoreWorkflowDryRunSummary:
         client = _build_client(database_path=workspace / "core_workflow.sqlite", settings=settings)
 
         with _patched_worker_runtime(session_factory=client.app.state.session_factory, settings=settings):
+            api_health = client.get("/health")
+            api_health.raise_for_status()
+            api_health_body = api_health.json()
+            _write(output, f"health api_status={api_health_body['status']}")
+
+            db_health = client.get("/health/db")
+            db_health.raise_for_status()
+            db_health_body = db_health.json()
+
+            redis_health = client.get("/health/redis")
+            redis_health.raise_for_status()
+            redis_health_body = redis_health.json()
+
+            gpu_health = client.get("/health/gpu")
+            if gpu_health.status_code not in {200, 503}:  # pragma: no cover - defensive runtime guard
+                gpu_health.raise_for_status()
+            gpu_health_body = gpu_health.json()
+
+            system_status = client.get("/api/v1/system/status")
+            system_status.raise_for_status()
+            system_status_body = system_status.json()
+            _write(
+                output,
+                "component_health "
+                f"db={db_health_body['status']} "
+                f"redis={redis_health_body['status']} "
+                f"gpu={gpu_health_body['status']} "
+                f"system={system_status_body['status']}",
+            )
+
             validation = client.post("/api/v1/symbols/validate", json={"symbol": " eur/usd "})
             validation.raise_for_status()
             validation_body = validation.json()
@@ -375,6 +429,11 @@ def run_dry_run(*, stdout: TextIO | None = None) -> CoreWorkflowDryRunSummary:
 
         return CoreWorkflowDryRunSummary(
             symbol_code=str(validation_body["normalized_symbol"]),
+            api_health_status=str(api_health_body["status"]),
+            db_health_status=str(db_health_body["status"]),
+            redis_health_status=str(redis_health_body["status"]),
+            gpu_health_status=str(gpu_health_body["status"]),
+            system_status=str(system_status_body["status"]),
             ingestion_status=str(ingestion_body["status"]),
             candles_written=candles_written,
             preprocessing_status=str(preprocessing_body["status"]),
@@ -399,6 +458,11 @@ def run_cli() -> int:
     print(
         "summary "
         f"symbol_code={summary.symbol_code} "
+        f"api_health_status={summary.api_health_status} "
+        f"db_health_status={summary.db_health_status} "
+        f"redis_health_status={summary.redis_health_status} "
+        f"gpu_health_status={summary.gpu_health_status} "
+        f"system_status={summary.system_status} "
         f"ingestion_status={summary.ingestion_status} "
         f"preprocessing_status={summary.preprocessing_status} "
         f"training_status={summary.training_status} "
@@ -430,12 +494,14 @@ def _build_client(*, database_path: Path, settings: Settings) -> TestClient:
     app.include_router(api_router)
 
     app.dependency_overrides[get_api_settings] = lambda: settings
+    app.dependency_overrides[get_db_engine] = lambda: engine
     app.dependency_overrides[require_authenticated_principal] = lambda: AuthPrincipal(
         subject="core-dry-run",
         roles=("operator",),
         auth_mode="disabled",
     )
     app.dependency_overrides[get_mt5_gateway] = lambda: gateway
+    app.dependency_overrides[get_redis_client] = lambda: DryRunRedisClient()
 
     def override_db() -> Iterator[object]:
         with session_scope(session_factory) as session:

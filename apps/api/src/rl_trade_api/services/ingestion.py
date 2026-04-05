@@ -15,6 +15,17 @@ from rl_trade_data import IngestionJob, JobKind, JobStatus, Symbol, mark_job_fai
 from rl_trade_data.models.enums import Timeframe
 
 
+class _LazyIngestionTaskHandle:
+    @staticmethod
+    def delay(*, job_id: int) -> None:
+        from rl_trade_worker.tasks import run_ingestion_job as ingestion_task
+
+        ingestion_task.delay(job_id=job_id)
+
+
+run_ingestion_job = _LazyIngestionTaskHandle()
+
+
 def request_ingestion(
     *,
     session: Session,
@@ -163,8 +174,6 @@ def enqueue_ingestion_job(
 
 
 def _enqueue_ingestion_job(*, job_id: int) -> None:
-    from rl_trade_worker.tasks import run_ingestion_job
-
     run_ingestion_job.delay(job_id=job_id)
 
 

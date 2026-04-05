@@ -2,6 +2,8 @@
 
 Production-style monorepo scaffold for a Forex Trainer & Paper Trading Dashboard with a FastAPI backend, Celery workers, shared Python libraries, and a React/Vite frontend.
 
+For a clean local bring-up path that goes from install to smoke validation, use [docs/setup.md](/Users/irvineafridwicahya/personal/rl-trade/docs/setup.md).
+
 ## Architecture
 
 - `apps/api`: FastAPI application entry point and HTTP surface.
@@ -14,6 +16,15 @@ Production-style monorepo scaffold for a Forex Trainer & Paper Trading Dashboard
 - `libs/trading`: future MT5 and paper-trading integrations.
 - `docker`: container assets and Compose files.
 - `docs`: lightweight architecture and setup notes.
+
+## Safety Guarantees
+
+- Demo trading only: live trading stays disabled by default and must not be enabled.
+- Backend-enforced broker safety: live MT5 accounts are blocked in backend code, not just in the UI.
+- Backend-enforced trade gating: a symbol cannot be paper traded unless it has an approved model.
+- Approval thresholds are enforced before tradeability: confidence must be at least `70%` and risk-to-reward must be at least `2.0`.
+- Fail-safe dependency handling: MT5, Redis, database, and GPU failures degrade features safely instead of failing open.
+- Long-running ingestion, preprocessing, training, evaluation, and trading loops run through workers rather than API request handlers.
 
 ## Setup
 
@@ -43,6 +54,8 @@ make validate-db-timescale
 make db-upgrade
 make validate-frontend
 make validate-core-smoke
+make validate-clean-setup
+make validate-milestone15
 make run-api
 make run-worker
 make run-scheduler
@@ -63,9 +76,13 @@ For the Milestone 11 manual paper-trading smoke path, run `python -m rl_trade_ap
 
 For the Milestone 12 manual live-update smoke path, run `python -m rl_trade_api.tools.websocket_event_dry_run` with the expanded `PYTHONPATH` shown above. The dry run opens `/ws/events` against a temporary FastAPI app, runs eager ingestion and supervised-training jobs, and prints the live WebSocket status sequence for both flows.
 
-For the Milestone 15 core backend smoke path, run `make validate-core-smoke`. That dry run builds a temporary FastAPI app plus SQLite workspace, validates `EURUSD`, ingests seeded candles through the eager worker path, preprocesses a dataset, trains and evaluates a supervised model, confirms approval gating, and then opens a demo-only paper-trade flow through the real trading routes.
+For the Milestone 15 core backend smoke path, run `make validate-core-smoke`. That dry run builds a temporary FastAPI app plus SQLite workspace, probes `/health`, `/health/db`, `/health/redis`, and `/api/v1/system/status`, validates `EURUSD`, ingests seeded candles through the eager worker path, preprocesses a dataset, trains and evaluates a supervised model, confirms approval gating, and then opens a demo-only paper-trade flow through the real trading routes.
 
 For the frontend browser smoke path, run `npm run frontend:test:e2e`. The Playwright suite serves the built Vite app locally, seeds operator state with the repo fixtures under `apps/frontend/tests/e2e/fixtures`, and exercises the critical happy path from login through symbol validation, training request submission, approval visibility, and paper-trading runtime controls without requiring a live backend.
+
+For a repeatable Milestone 15 checkpoint, run `make validate-milestone15`. That command bundles the docs/workflow smoke checks, API health plus core backend smoke coverage, the curated backend hardening regression lane, and the frontend unit plus Playwright browser smoke suites.
+
+For an isolated setup proof that follows the documented install path in a temporary workspace, run `make validate-clean-setup`. That command copies the repo into a scratch directory, copies `.env.example` to `.env`, creates a fresh virtualenv, installs the editable backend package, validates backend bootstrap, installs frontend dependencies, installs Playwright Chromium, and runs the frontend unit smoke suite.
 
 ## Environment Variables
 

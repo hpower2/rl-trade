@@ -13,6 +13,17 @@ from rl_trade_data import JobKind, JobStatus, PreprocessingJob, Symbol, mark_job
 from rl_trade_data.models import Timeframe
 
 
+class _LazyPreprocessingTaskHandle:
+    @staticmethod
+    def delay(*, job_id: int) -> None:
+        from rl_trade_worker.tasks import run_preprocessing_job as preprocessing_task
+
+        preprocessing_task.delay(job_id=job_id)
+
+
+run_preprocessing_job = _LazyPreprocessingTaskHandle()
+
+
 def request_preprocessing(
     *,
     session: Session,
@@ -93,8 +104,6 @@ def build_preprocessing_job_response(*, job: PreprocessingJob, symbol: Symbol) -
 
 
 def _enqueue_preprocessing_job(*, job_id: int) -> None:
-    from rl_trade_worker.tasks import run_preprocessing_job
-
     run_preprocessing_job.delay(job_id=job_id)
 
 

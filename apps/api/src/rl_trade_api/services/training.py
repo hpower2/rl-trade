@@ -34,6 +34,17 @@ from rl_trade_data import (
 from rl_trade_data.models import DatasetStatus, TrainingType
 
 
+class _LazySupervisedTrainingTaskHandle:
+    @staticmethod
+    def delay(*, job_id: int) -> None:
+        from rl_trade_worker.tasks import run_supervised_training_job as supervised_training_task
+
+        supervised_training_task.delay(job_id=job_id)
+
+
+run_supervised_training_job = _LazySupervisedTrainingTaskHandle()
+
+
 def request_training(
     *,
     session: Session,
@@ -401,8 +412,6 @@ def retry_supervised_training(
 
 
 def _enqueue_supervised_training_job(*, job_id: int) -> None:
-    from rl_trade_worker.tasks import run_supervised_training_job
-
     run_supervised_training_job.delay(job_id=job_id)
 
 
